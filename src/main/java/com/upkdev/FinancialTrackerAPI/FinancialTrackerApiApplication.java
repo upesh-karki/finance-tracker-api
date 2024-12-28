@@ -2,13 +2,18 @@ package com.upkdev.FinancialTrackerAPI;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import java.util.List;
-//.--test
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
+
 @SpringBootApplication
 public class FinancialTrackerApiApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(FinancialTrackerApiApplication.class, args);
 	}
-
+	@Bean
+	public RestTemplate restTemplate() {
+		return new RestTemplate();
+	}
 }
+
