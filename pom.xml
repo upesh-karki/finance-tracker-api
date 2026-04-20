@@ -73,8 +73,53 @@
 		</dependency>
 	</dependencies>
 
+	<distributionManagement>
+		<repository>
+			<id>github-packages</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/upesh-karki/finance-tracker-api</url>
+		</repository>
+	</distributionManagement>
+
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.11</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals><goal>prepare-agent</goal></goals>
+						<phase>initialize</phase>
+					</execution>
+					<execution>
+						<id>report</id>
+						<goals><goal>report</goal></goals>
+						<phase>verify</phase>
+					</execution>
+					<execution>
+						<id>check</id>
+						<goals><goal>check</goal></goals>
+						<phase>verify</phase>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>INSTRUCTION</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.70</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+							<haltOnFailure>true</haltOnFailure>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
