@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="004-create-member-detail" author="finance-tracker">
+        <createTable tableName="member_detail">
+            <column name="id" type="bigserial">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="member_id" type="bigint">
+                <constraints nullable="false" foreignKeyName="fk_member_detail_member" references="member(id)"/>
+            </column>
+            <column name="occupation" type="varchar(100)"/>
+            <column name="address1" type="varchar(255)"/>
+            <column name="address2" type="varchar(255)"/>
+            <column name="city" type="varchar(100)"/>
+            <column name="country" type="varchar(100)"/>
+            <column name="zip_code" type="varchar(20)"/>
+            <column name="phone_number" type="varchar(30)"/>
+            <column name="profile_status" type="varchar(20)" defaultValue="ACTIVE"/>
+            <column name="created_at" type="timestamp" defaultValueComputed="now()"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
