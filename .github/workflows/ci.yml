@@ -60,7 +60,7 @@ jobs:
           EOF
 
       - name: Build, test and check coverage
-        run: mvn clean verify
+        run: mvn clean verify -U  # -U forces re-download of SNAPSHOT dependencies
 
       - name: Upload test results
         if: always()
