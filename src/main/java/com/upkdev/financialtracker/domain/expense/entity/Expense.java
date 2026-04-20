@@ -1,5 +1,6 @@
-package com.upkdev.financialtracker.domain.expense;
+package com.upkdev.financialtracker.domain.expense.entity;
 
+import com.upkdev.financialtracker.domain.expense.ExpenseCategory;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -9,7 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "expense")
+@Table(name = "expense", schema = "ods")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

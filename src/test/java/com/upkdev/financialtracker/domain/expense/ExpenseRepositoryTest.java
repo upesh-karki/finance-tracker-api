@@ -1,7 +1,9 @@
 package com.upkdev.financialtracker.domain.expense;
 
-import com.upkdev.financialtracker.domain.member.Member;
-import com.upkdev.financialtracker.domain.member.MemberRepository;
+import com.upkdev.financialtracker.domain.expense.entity.Expense;
+import com.upkdev.financialtracker.domain.expense.repository.ExpenseRepository;
+import com.upkdev.financialtracker.domain.member.entity.Member;
+import com.upkdev.financialtracker.domain.member.repository.MemberRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +16,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+
 @DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
 class ExpenseRepositoryTest {
 

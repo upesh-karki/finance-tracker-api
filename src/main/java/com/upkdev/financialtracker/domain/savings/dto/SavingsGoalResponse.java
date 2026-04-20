@@ -1,6 +1,5 @@
-package com.upkdev.financialtracker.domain.expense.dto;
+package com.upkdev.financialtracker.domain.savings.dto;
 
-import com.upkdev.financialtracker.domain.expense.ExpenseCategory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,13 +13,15 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ExpenseResponse {
+public class SavingsGoalResponse {
     private Long id;
     private Long memberId;
-    private String expenseName;
-    private BigDecimal amount;
-    private ExpenseCategory category;
-    private String description;
-    private LocalDate expenseDate;
+    private String goalName;
+    private BigDecimal targetAmount;
+    private BigDecimal currentAmount;
+    private BigDecimal monthlySavingsTarget;
+    private BigDecimal income;
+    private LocalDate targetDate;
+    private String status;
     private LocalDateTime createdAt;
 }

@@ -1,10 +1,11 @@
 package com.upkdev.financialtracker.domain.member;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.upkdev.financialtracker.domain.member.api.MemberController;
 import com.upkdev.financialtracker.domain.member.dto.LoginRequest;
 import com.upkdev.financialtracker.domain.member.dto.MemberRequest;
 import com.upkdev.financialtracker.domain.member.dto.MemberResponse;
-import com.upkdev.financialtracker.shared.ApiResponse;
+import com.upkdev.financialtracker.domain.member.service.MemberService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -101,7 +102,6 @@ class MemberControllerTest {
 
     @Test
     void register_invalidBody_returns400() throws Exception {
-        // Missing required fields (empty object)
         mockMvc.perform(post("/api/v1/members")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

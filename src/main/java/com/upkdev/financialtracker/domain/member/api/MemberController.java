@@ -1,8 +1,9 @@
-package com.upkdev.financialtracker.domain.member;
+package com.upkdev.financialtracker.domain.member.api;
 
 import com.upkdev.financialtracker.domain.member.dto.LoginRequest;
 import com.upkdev.financialtracker.domain.member.dto.MemberRequest;
 import com.upkdev.financialtracker.domain.member.dto.MemberResponse;
+import com.upkdev.financialtracker.domain.member.service.MemberService;
 import com.upkdev.financialtracker.shared.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

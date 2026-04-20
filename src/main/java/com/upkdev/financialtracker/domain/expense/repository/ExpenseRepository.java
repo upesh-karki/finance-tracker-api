@@ -1,5 +1,7 @@
-package com.upkdev.financialtracker.domain.expense;
+package com.upkdev.financialtracker.domain.expense.repository;
 
+import com.upkdev.financialtracker.domain.expense.ExpenseCategory;
+import com.upkdev.financialtracker.domain.expense.entity.Expense;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;

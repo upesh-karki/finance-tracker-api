@@ -1,4 +1,4 @@
-package com.upkdev.financialtracker.domain.savings;
+package com.upkdev.financialtracker.domain.savings.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "savings_goal")
+@Table(name = "savings_goal", schema = "ods")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

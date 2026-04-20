@@ -1,8 +1,11 @@
 package com.upkdev.financialtracker.domain.member;
 
+import com.upkdev.financialtracker.domain.member.dao.MemberDao;
 import com.upkdev.financialtracker.domain.member.dto.LoginRequest;
 import com.upkdev.financialtracker.domain.member.dto.MemberRequest;
 import com.upkdev.financialtracker.domain.member.dto.MemberResponse;
+import com.upkdev.financialtracker.domain.member.entity.Member;
+import com.upkdev.financialtracker.domain.member.service.impl.MemberServiceImpl;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,10 +24,10 @@ import static org.mockito.Mockito.*;
 class MemberServiceTest {
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberDao memberDao;
 
     @InjectMocks
-    private MemberService memberService;
+    private MemberServiceImpl memberService;
 
     private MemberRequest buildRequest() {
         MemberRequest req = new MemberRequest();
@@ -55,19 +58,19 @@ class MemberServiceTest {
     @Test
     void register_mapsAndReturnsResponse() {
         Member saved = buildMember(1L);
-        when(memberRepository.save(any(Member.class))).thenReturn(saved);
+        when(memberDao.save(any(Member.class))).thenReturn(saved);
 
         MemberResponse response = memberService.register(buildRequest());
 
         assertThat(response.getId()).isEqualTo(1L);
         assertThat(response.getEmail()).isEqualTo("john@example.com");
         assertThat(response.getUsername()).isEqualTo("johndoe");
-        verify(memberRepository).save(any(Member.class));
+        verify(memberDao).save(any(Member.class));
     }
 
     @Test
     void findById_returnsResponse() {
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(buildMember(1L)));
+        when(memberDao.findById(1L)).thenReturn(Optional.of(buildMember(1L)));
 
         MemberResponse response = memberService.findById(1L);
 
@@ -77,7 +80,7 @@ class MemberServiceTest {
 
     @Test
     void findById_notFound_throwsEntityNotFoundException() {
-        when(memberRepository.findById(99L)).thenReturn(Optional.empty());
+        when(memberDao.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.findById(99L))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -85,17 +88,17 @@ class MemberServiceTest {
     }
 
     @Test
-    void deleteById_callsRepository() {
-        when(memberRepository.existsById(1L)).thenReturn(true);
+    void deleteById_callsDao() {
+        when(memberDao.existsById(1L)).thenReturn(true);
 
         memberService.deleteById(1L);
 
-        verify(memberRepository).deleteById(1L);
+        verify(memberDao).deleteById(1L);
     }
 
     @Test
     void deleteById_notFound_throwsEntityNotFoundException() {
-        when(memberRepository.existsById(99L)).thenReturn(false);
+        when(memberDao.existsById(99L)).thenReturn(false);
 
         assertThatThrownBy(() -> memberService.deleteById(99L))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -105,7 +108,7 @@ class MemberServiceTest {
     @Test
     void login_validCredentials_returnsResponse() {
         Member member = buildMember(1L);
-        when(memberRepository.findByUsername("johndoe")).thenReturn(Optional.of(member));
+        when(memberDao.findByUsername("johndoe")).thenReturn(Optional.of(member));
 
         LoginRequest req = new LoginRequest();
         req.setUsername("johndoe");
@@ -119,7 +122,7 @@ class MemberServiceTest {
     @Test
     void login_wrongPassword_throwsException() {
         Member member = buildMember(1L);
-        when(memberRepository.findByUsername("johndoe")).thenReturn(Optional.of(member));
+        when(memberDao.findByUsername("johndoe")).thenReturn(Optional.of(member));
 
         LoginRequest req = new LoginRequest();
         req.setUsername("johndoe");
@@ -131,7 +134,7 @@ class MemberServiceTest {
 
     @Test
     void findAll_returnsList() {
-        when(memberRepository.findAll()).thenReturn(List.of(buildMember(1L), buildMember(2L)));
+        when(memberDao.findAll()).thenReturn(List.of(buildMember(1L), buildMember(2L)));
 
         List<MemberResponse> all = memberService.findAll();
 

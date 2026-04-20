@@ -1,7 +1,9 @@
-package com.upkdev.financialtracker.domain.expense;
+package com.upkdev.financialtracker.domain.expense.api;
 
+import com.upkdev.financialtracker.domain.expense.ExpenseCategory;
 import com.upkdev.financialtracker.domain.expense.dto.ExpenseRequest;
 import com.upkdev.financialtracker.domain.expense.dto.ExpenseResponse;
+import com.upkdev.financialtracker.domain.expense.service.ExpenseService;
 import com.upkdev.financialtracker.shared.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

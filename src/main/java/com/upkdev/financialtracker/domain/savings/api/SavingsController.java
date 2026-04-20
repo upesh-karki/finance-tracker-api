@@ -1,7 +1,9 @@
-package com.upkdev.financialtracker.domain.savings;
+package com.upkdev.financialtracker.domain.savings.api;
 
 import com.upkdev.financialtracker.domain.savings.dto.SavingsGoalRequest;
+import com.upkdev.financialtracker.domain.savings.dto.SavingsGoalResponse;
 import com.upkdev.financialtracker.domain.savings.dto.SavingsRecommendationResponse;
+import com.upkdev.financialtracker.domain.savings.service.SavingsService;
 import com.upkdev.financialtracker.shared.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +20,13 @@ public class SavingsController {
     private final SavingsService savingsService;
 
     @PostMapping("/goals")
-    public ResponseEntity<ApiResponse<SavingsGoal>> createGoal(@Valid @RequestBody SavingsGoalRequest request) {
-        SavingsGoal goal = savingsService.createGoal(request);
+    public ResponseEntity<ApiResponse<SavingsGoalResponse>> createGoal(@Valid @RequestBody SavingsGoalRequest request) {
+        SavingsGoalResponse goal = savingsService.createGoal(request);
         return ResponseEntity.ok(ApiResponse.ok("Savings goal created", goal));
     }
 
     @GetMapping("/goals/member/{memberId}")
-    public ResponseEntity<ApiResponse<List<SavingsGoal>>> getGoalsByMember(@PathVariable Long memberId) {
+    public ResponseEntity<ApiResponse<List<SavingsGoalResponse>>> getGoalsByMember(@PathVariable Long memberId) {
         return ResponseEntity.ok(ApiResponse.ok(savingsService.getGoalsByMember(memberId)));
     }
 
