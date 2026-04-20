@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.upkdev</groupId>
 	<artifactId>finance-tracker-api</artifactId>
-	<version>2026.04.1</version>
+	<version>2026.04.1-SNAPSHOT</version>
 	<name>finance-tracker-api</name>
 	<description>Finance Tracker API - Spring Boot</description>
 	<properties>
@@ -56,7 +56,7 @@
 		<dependency>
 			<groupId>com.upkdev.financetracker</groupId>
 			<artifactId>finance-tracker-db-test</artifactId>
-			<version>2026.04.1</version>
+			<version>2026.04.1-SNAPSHOT</version>
 			<classifier>tests</classifier>
 			<scope>test</scope>
 		</dependency>
@@ -76,9 +76,14 @@
 	<distributionManagement>
 		<repository>
 			<id>github-packages</id>
-			<name>GitHub Packages</name>
+			<name>GitHub Packages Releases</name>
 			<url>https://maven.pkg.github.com/upesh-karki/finance-tracker-api</url>
 		</repository>
+		<snapshotRepository>
+			<id>github-packages</id>
+			<name>GitHub Packages Snapshots</name>
+			<url>https://maven.pkg.github.com/upesh-karki/finance-tracker-api</url>
+		</snapshotRepository>
 	</distributionManagement>
 
 	<build>
