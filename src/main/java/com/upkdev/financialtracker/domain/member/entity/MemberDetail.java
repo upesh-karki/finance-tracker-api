@@ -1,4 +1,4 @@
-package com.upkdev.financialtracker.domain.member;
+package com.upkdev.financialtracker.domain.member.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,7 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "member_detail")
+@Table(name = "member_detail", schema = "ods")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -1,10 +1,14 @@
 package com.upkdev.financialtracker.domain.savings;
 
-import com.upkdev.financialtracker.domain.expense.Expense;
 import com.upkdev.financialtracker.domain.expense.ExpenseCategory;
-import com.upkdev.financialtracker.domain.expense.ExpenseRepository;
+import com.upkdev.financialtracker.domain.expense.dao.ExpenseDao;
+import com.upkdev.financialtracker.domain.expense.entity.Expense;
+import com.upkdev.financialtracker.domain.savings.dao.SavingsDao;
 import com.upkdev.financialtracker.domain.savings.dto.SavingsGoalRequest;
+import com.upkdev.financialtracker.domain.savings.dto.SavingsGoalResponse;
 import com.upkdev.financialtracker.domain.savings.dto.SavingsRecommendationResponse;
+import com.upkdev.financialtracker.domain.savings.entity.SavingsGoal;
+import com.upkdev.financialtracker.domain.savings.service.impl.SavingsServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,13 +27,13 @@ import static org.mockito.Mockito.*;
 class SavingsServiceTest {
 
     @Mock
-    private SavingsRepository savingsRepository;
+    private SavingsDao savingsDao;
 
     @Mock
-    private ExpenseRepository expenseRepository;
+    private ExpenseDao expenseDao;
 
     @InjectMocks
-    private SavingsService savingsService;
+    private SavingsServiceImpl savingsService;
 
     private SavingsGoalRequest buildGoalRequest() {
         SavingsGoalRequest req = new SavingsGoalRequest();
@@ -57,20 +61,20 @@ class SavingsServiceTest {
     @Test
     void createGoal_savesAndReturns() {
         SavingsGoal saved = buildGoal(1L);
-        when(savingsRepository.save(any(SavingsGoal.class))).thenReturn(saved);
+        when(savingsDao.save(any(SavingsGoal.class))).thenReturn(saved);
 
-        SavingsGoal result = savingsService.createGoal(buildGoalRequest());
+        SavingsGoalResponse result = savingsService.createGoal(buildGoalRequest());
 
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getGoalName()).isEqualTo("Emergency Fund");
-        verify(savingsRepository).save(any(SavingsGoal.class));
+        verify(savingsDao).save(any(SavingsGoal.class));
     }
 
     @Test
     void getGoalsByMember_returnsList() {
-        when(savingsRepository.findByMemberId(1L)).thenReturn(List.of(buildGoal(1L), buildGoal(2L)));
+        when(savingsDao.findByMemberId(1L)).thenReturn(List.of(buildGoal(1L), buildGoal(2L)));
 
-        List<SavingsGoal> goals = savingsService.getGoalsByMember(1L);
+        List<SavingsGoalResponse> goals = savingsService.getGoalsByMember(1L);
 
         assertThat(goals).hasSize(2);
     }
@@ -83,21 +87,14 @@ class SavingsServiceTest {
                 Expense.builder().memberId(1L).expenseName("Transport").amount(new BigDecimal("200.00"))
                         .category(ExpenseCategory.TRANSPORT).expenseDate(LocalDate.now()).build()
         );
-        when(expenseRepository.findByMemberId(1L)).thenReturn(expenses);
-        when(savingsRepository.findByMemberId(1L)).thenReturn(List.of(buildGoal(1L)));
+        when(expenseDao.findByMemberId(1L)).thenReturn(expenses);
+        when(savingsDao.findByMemberId(1L)).thenReturn(List.of(buildGoal(1L)));
 
         SavingsRecommendationResponse response = savingsService.getRecommendations(1L);
 
-        // totalExpenses = 400 + 200 = 600
         assertThat(response.getTotalExpenses()).isEqualByComparingTo("600.00");
-
-        // currentMonthlySavings = income(3000) - expenses(600) = 2400
         assertThat(response.getCurrentMonthlySavings()).isEqualByComparingTo("2400.00");
-
-        // recommendations should be non-empty
         assertThat(response.getRecommendations()).isNotEmpty();
-
-        // projectedMonthsToGoal should be non-null
         assertThat(response.getProjectedMonthsToGoal()).isNotNull();
     }
 }

@@ -1,7 +1,10 @@
 package com.upkdev.financialtracker.domain.expense;
 
+import com.upkdev.financialtracker.domain.expense.dao.ExpenseDao;
 import com.upkdev.financialtracker.domain.expense.dto.ExpenseRequest;
 import com.upkdev.financialtracker.domain.expense.dto.ExpenseResponse;
+import com.upkdev.financialtracker.domain.expense.entity.Expense;
+import com.upkdev.financialtracker.domain.expense.service.impl.ExpenseServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,10 +23,10 @@ import static org.mockito.Mockito.*;
 class ExpenseServiceTest {
 
     @Mock
-    private ExpenseRepository expenseRepository;
+    private ExpenseDao expenseDao;
 
     @InjectMocks
-    private ExpenseService expenseService;
+    private ExpenseServiceImpl expenseService;
 
     private Expense buildExpense(Long id, Long memberId, ExpenseCategory category, BigDecimal amount) {
         return Expense.builder()
@@ -49,19 +52,19 @@ class ExpenseServiceTest {
     @Test
     void create_savesAndReturnsResponse() {
         Expense saved = buildExpense(1L, 1L, ExpenseCategory.FOOD, new BigDecimal("75.50"));
-        when(expenseRepository.save(any(Expense.class))).thenReturn(saved);
+        when(expenseDao.save(any(Expense.class))).thenReturn(saved);
 
         ExpenseResponse response = expenseService.create(buildRequest());
 
         assertThat(response.getId()).isEqualTo(1L);
         assertThat(response.getMemberId()).isEqualTo(1L);
         assertThat(response.getAmount()).isEqualByComparingTo("75.50");
-        verify(expenseRepository).save(any(Expense.class));
+        verify(expenseDao).save(any(Expense.class));
     }
 
     @Test
     void findByMember_returnsList() {
-        when(expenseRepository.findByMemberId(1L)).thenReturn(List.of(
+        when(expenseDao.findByMemberId(1L)).thenReturn(List.of(
                 buildExpense(1L, 1L, ExpenseCategory.FOOD, new BigDecimal("20.00")),
                 buildExpense(2L, 1L, ExpenseCategory.TRANSPORT, new BigDecimal("30.00"))
         ));
@@ -73,7 +76,7 @@ class ExpenseServiceTest {
 
     @Test
     void getTotalByMember_sumsCorrectly() {
-        when(expenseRepository.findByMemberId(1L)).thenReturn(List.of(
+        when(expenseDao.findByMemberId(1L)).thenReturn(List.of(
                 buildExpense(1L, 1L, ExpenseCategory.FOOD, new BigDecimal("50.00")),
                 buildExpense(2L, 1L, ExpenseCategory.TRANSPORT, new BigDecimal("30.00"))
         ));
@@ -85,7 +88,7 @@ class ExpenseServiceTest {
 
     @Test
     void getTotalByCategory_sumsCorrectly() {
-        when(expenseRepository.findByMemberIdAndCategory(1L, ExpenseCategory.FOOD)).thenReturn(List.of(
+        when(expenseDao.findByMemberIdAndCategory(1L, ExpenseCategory.FOOD)).thenReturn(List.of(
                 buildExpense(1L, 1L, ExpenseCategory.FOOD, new BigDecimal("25.00")),
                 buildExpense(2L, 1L, ExpenseCategory.FOOD, new BigDecimal("15.00"))
         ));
