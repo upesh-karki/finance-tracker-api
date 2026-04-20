@@ -1,2 +1,19 @@
+spring:
+  application:
+    name: finance-tracker-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/finance_tracker}
+    username: ${DB_USER:finance_user}
+    password: ${DB_PASS:finance_pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
 server:
-  port: 8586
+  port: ${PORT:8080}
