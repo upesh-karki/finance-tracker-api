@@ -12,4 +12,5 @@ public class ExtractedTransaction {
     private String suggestedCategory;
     private Boolean isCreditCardPayment;
     private Boolean isTransfer;
+    private String transactionType; // EXPENSE, INCOME, INVESTMENT, TRANSFER, CC_PAYMENT
 }

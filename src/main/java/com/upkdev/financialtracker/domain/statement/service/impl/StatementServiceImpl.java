@@ -3,6 +3,10 @@ package com.upkdev.financialtracker.domain.statement.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.upkdev.financialtracker.domain.account.dao.AccountDao;
+import com.upkdev.financialtracker.domain.account.dto.AccountStatementResponse;
+import com.upkdev.financialtracker.domain.account.entity.AccountStatement;
+import com.upkdev.financialtracker.domain.account.mapper.AccountMapper;
 import com.upkdev.financialtracker.domain.statement.dto.ExtractedTransaction;
 import com.upkdev.financialtracker.domain.statement.dto.StatementUploadResponse;
 import com.upkdev.financialtracker.domain.statement.service.StatementService;
@@ -28,6 +32,7 @@ public class StatementServiceImpl implements StatementService {
 
     private final RestTemplate ollamaRestTemplate;
     private final ObjectMapper objectMapper;
+    private final AccountDao accountDao;
 
     @Value("${ollama.base-url}")
     private String ollamaBaseUrl;
@@ -36,9 +41,11 @@ public class StatementServiceImpl implements StatementService {
     private String ollamaModel;
 
     public StatementServiceImpl(@Qualifier("ollamaRestTemplate") RestTemplate ollamaRestTemplate,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                AccountDao accountDao) {
         this.ollamaRestTemplate = ollamaRestTemplate;
         this.objectMapper = objectMapper;
+        this.accountDao = accountDao;
     }
 
     @Override
@@ -159,6 +166,7 @@ public class StatementServiceImpl implements StatementService {
                 + "      \"amount\": 12.34,\n"
                 + "      \"type\": \"DEBIT\",\n"
                 + "      \"suggestedCategory\": \"FOOD\",\n"
+                + "      \"transactionType\": \"EXPENSE\",\n"
                 + "      \"isCreditCardPayment\": false,\n"
                 + "      \"isTransfer\": false\n"
                 + "    }\n"
@@ -166,8 +174,9 @@ public class StatementServiceImpl implements StatementService {
                 + "}\n\n"
                 + "Rules:\n"
                 + "- type must be either \"DEBIT\" or \"CREDIT\"\n"
-                + "- suggestedCategory for DEBIT expenses: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, OTHER\n"
+                + "- suggestedCategory for DEBIT expenses: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, INVESTMENT, OTHER\n"
                 + "- suggestedCategory for CREDIT income: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
+                + "- transactionType: EXPENSE for purchases/bills, INCOME for salary/deposits, INVESTMENT for money going to investment accounts/brokerage, TRANSFER for internal account moves/CC payments from chequing, CC_PAYMENT for payments received by a credit card\n"
                 + "- isCreditCardPayment: true ONLY for credits on a credit card statement (card payments received)\n"
                 + "- isTransfer: true for: credit card payments (from chequing), transfers to savings/investment accounts, internal account transfers, investment contributions — these are NEUTRAL transactions\n"
                 + "- amount must be a positive number\n"
@@ -193,5 +202,34 @@ public class StatementServiceImpl implements StatementService {
             throw new RuntimeException("Failed to parse AI model response: " + e.getMessage(), e);
         }
         return Collections.emptyList();
+    }
+
+    @Override
+    public void markMonthUploaded(Long accountId, int year, int month, int transactionCount) {
+        var existing = accountDao.findStatement(accountId, year, month);
+        AccountStatement stmt;
+        if (existing.isPresent()) {
+            stmt = existing.get();
+            stmt.setStatus("UPLOADED");
+            stmt.setTransactionCount(transactionCount);
+            stmt.setUploadedAt(java.time.LocalDateTime.now());
+        } else {
+            stmt = AccountStatement.builder()
+                    .accountId(accountId)
+                    .statementYear(year)
+                    .statementMonth(month)
+                    .status("UPLOADED")
+                    .transactionCount(transactionCount)
+                    .uploadedAt(java.time.LocalDateTime.now())
+                    .build();
+        }
+        accountDao.saveStatement(stmt);
+    }
+
+    @Override
+    public AccountStatementResponse getStatementStatus(Long accountId, int year, int month) {
+        return accountDao.findStatement(accountId, year, month)
+                .map(AccountMapper::toStatementResponse)
+                .orElse(null);
     }
 }
