@@ -11,4 +11,5 @@ public class ExtractedTransaction {
     private String type; // DEBIT or CREDIT
     private String suggestedCategory;
     private Boolean isCreditCardPayment;
+    private Boolean isTransfer;
 }

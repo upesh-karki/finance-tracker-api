@@ -55,25 +55,42 @@ public class StatementServiceImpl implements StatementService {
 
         boolean isCreditCard = "CREDIT_CARD".equalsIgnoreCase(accountTypeCode);
 
+        // Transfers = neutral transactions (CC payments from chequing, investment contributions, internal transfers)
+        List<ExtractedTransaction> transfers = all.stream()
+                .filter(t -> Boolean.TRUE.equals(t.getIsTransfer())
+                        || Boolean.TRUE.equals(t.getIsCreditCardPayment()))
+                .collect(Collectors.toList());
+
+        // Expenses = debits that are not transfers
         List<ExtractedTransaction> expenses = all.stream()
-                .filter(t -> "DEBIT".equalsIgnoreCase(t.getType()) && !Boolean.TRUE.equals(t.getIsCreditCardPayment()))
+                .filter(t -> "DEBIT".equalsIgnoreCase(t.getType())
+                        && !Boolean.TRUE.equals(t.getIsTransfer())
+                        && !Boolean.TRUE.equals(t.getIsCreditCardPayment()))
                 .collect(Collectors.toList());
 
+        // Income = credits that are not transfers and not on credit card
         List<ExtractedTransaction> income = all.stream()
-                .filter(t -> "CREDIT".equalsIgnoreCase(t.getType()) && !isCreditCard && !Boolean.TRUE.equals(t.getIsCreditCardPayment()))
+                .filter(t -> "CREDIT".equalsIgnoreCase(t.getType())
+                        && !isCreditCard
+                        && !Boolean.TRUE.equals(t.getIsTransfer())
+                        && !Boolean.TRUE.equals(t.getIsCreditCardPayment()))
                 .collect(Collectors.toList());
 
+        // CC payments specifically (subset of transfers, for display purposes)
         List<ExtractedTransaction> ccPayments = all.stream()
-                .filter(t -> Boolean.TRUE.equals(t.getIsCreditCardPayment()) || ("CREDIT".equalsIgnoreCase(t.getType()) && isCreditCard))
+                .filter(t -> Boolean.TRUE.equals(t.getIsCreditCardPayment())
+                        || ("CREDIT".equalsIgnoreCase(t.getType()) && isCreditCard && !Boolean.TRUE.equals(t.getIsTransfer())))
                 .collect(Collectors.toList());
 
         return StatementUploadResponse.builder()
                 .transactionCount(all.size())
                 .expenseCount(expenses.size())
                 .incomeCount(income.size())
+                .transferCount(transfers.size())
                 .creditCardPaymentCount(ccPayments.size())
                 .expenses(expenses)
                 .income(income)
+                .transfers(transfers)
                 .creditCardPayments(ccPayments)
                 .rawTextPreview(pdfText.length() > 500 ? pdfText.substring(0, 500) : pdfText)
                 .modelUsed(ollamaModel)
@@ -120,9 +137,16 @@ public class StatementServiceImpl implements StatementService {
 
     private String buildExtractionPrompt(String pdfText, String accountTypeCode) {
         boolean isCreditCard = "CREDIT_CARD".equalsIgnoreCase(accountTypeCode);
-        String accountContext = isCreditCard
-                ? "This is a CREDIT CARD statement. Purchases/charges are DEBIT. Payments made TO the card are credits — mark those as isCreditCardPayment=true, NOT as income."
-                : "This is a bank account statement. Outgoing transactions are DEBIT (expenses). Incoming transactions like salary, transfers, refunds are CREDIT (income).";
+        boolean isInvestment = "INVESTMENT".equalsIgnoreCase(accountTypeCode);
+
+        String accountContext;
+        if (isCreditCard) {
+            accountContext = "This is a CREDIT CARD statement. Purchases/charges are DEBIT (expenses). Payments made TO the card are credits — mark those as isCreditCardPayment=true. They are NOT income or expenses.";
+        } else if (isInvestment) {
+            accountContext = "This is an INVESTMENT account statement. Contributions/deposits are transfers IN (isTransfer=true). Withdrawals are transfers OUT (isTransfer=true). Dividends or interest are CREDIT (income). Fees are DEBIT (expense).";
+        } else {
+            accountContext = "This is a bank account statement. Outgoing transactions are DEBIT (expenses). Incoming transactions like salary, transfers from employer are CREDIT (income). However: payments to credit cards, transfers to other personal accounts (savings, investment), and internal account transfers should be marked isTransfer=true — they are NEUTRAL and should NOT count as expenses or income.";
+        }
 
         return "You are a financial data extraction assistant. Extract all transactions from the bank statement text below.\n\n"
                 + "Account context: " + accountContext + "\n\n"
@@ -135,15 +159,17 @@ public class StatementServiceImpl implements StatementService {
                 + "      \"amount\": 12.34,\n"
                 + "      \"type\": \"DEBIT\",\n"
                 + "      \"suggestedCategory\": \"FOOD\",\n"
-                + "      \"isCreditCardPayment\": false\n"
+                + "      \"isCreditCardPayment\": false,\n"
+                + "      \"isTransfer\": false\n"
                 + "    }\n"
                 + "  ]\n"
                 + "}\n\n"
                 + "Rules:\n"
                 + "- type must be either \"DEBIT\" or \"CREDIT\"\n"
-                + "- suggestedCategory for DEBIT: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, OTHER\n"
-                + "- suggestedCategory for CREDIT: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
-                + "- isCreditCardPayment: true only for credit card payment credits (not purchases)\n"
+                + "- suggestedCategory for DEBIT expenses: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, OTHER\n"
+                + "- suggestedCategory for CREDIT income: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
+                + "- isCreditCardPayment: true ONLY for credits on a credit card statement (card payments received)\n"
+                + "- isTransfer: true for: credit card payments (from chequing), transfers to savings/investment accounts, internal account transfers, investment contributions — these are NEUTRAL transactions\n"
                 + "- amount must be a positive number\n"
                 + "- date must be in YYYY-MM-DD format\n"
                 + "- Extract ALL transactions\n\n"
