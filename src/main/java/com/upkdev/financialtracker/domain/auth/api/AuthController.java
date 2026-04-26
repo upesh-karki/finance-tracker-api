@@ -18,7 +18,13 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("Registration successful. Check your email for verification code.", authService.register(request)));
+        try {
+            return ResponseEntity.ok(ApiResponse.ok(
+                "Registration successful. Check your email for verification code.",
+                authService.register(request)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping("/login")
@@ -28,29 +34,39 @@ public class AuthController {
             return ResponseEntity.ok(ApiResponse.ok("Login successful", authService.login(request)));
         } catch (RuntimeException e) {
             if ("EMAIL_NOT_VERIFIED".equals(e.getMessage())) {
-                return ResponseEntity.status(403)
-                        .body(ApiResponse.error("EMAIL_NOT_VERIFIED"));
+                return ResponseEntity.status(403).body(ApiResponse.error("EMAIL_NOT_VERIFIED"));
             }
-            return ResponseEntity.status(401)
-                    .body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.status(401).body(ApiResponse.error(e.getMessage()));
         }
     }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<ApiResponse<AuthResponse>> verifyOtp(
             @Valid @RequestBody VerifyOtpRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("Email verified successfully", authService.verifyOtp(request)));
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Email verified successfully", authService.verifyOtp(request)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping("/resend-otp")
     public ResponseEntity<ApiResponse<Void>> resendOtp(@RequestParam String email) {
-        authService.resendOtp(email);
-        return ResponseEntity.ok(ApiResponse.ok("Verification code sent", null));
+        try {
+            authService.resendOtp(email);
+            return ResponseEntity.ok(ApiResponse.ok("Verification code sent", null));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> googleAuth(
             @Valid @RequestBody GoogleAuthRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("Login successful", authService.googleAuth(request)));
+        try {
+            return ResponseEntity.ok(ApiResponse.ok("Login successful", authService.googleAuth(request)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 }

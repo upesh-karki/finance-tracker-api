@@ -13,8 +13,7 @@ import com.upkdev.financialtracker.domain.member.repository.MemberRepository;
 import com.upkdev.financialtracker.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final MemberRepository memberRepository;
     private final EmailOtpRepository otpRepository;
     private final JwtUtil jwtUtil;
-    private final JavaMailSender mailSender;
+    private final RestTemplate restTemplate;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.otp.expiry-minutes}")
@@ -39,8 +38,14 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.google.client-id}")
     private String googleClientId;
 
-    @Value("${app.smtp.from}")
-    private String smtpFrom;
+    @Value("${app.brevo.api-key}")
+    private String brevoApiKey;
+
+    @Value("${app.brevo.sender-email}")
+    private String brevoSenderEmail;
+
+    @Value("${app.brevo.sender-name:Finance Tracker}")
+    private String brevoSenderName;
 
     @Override
     @Transactional
@@ -194,19 +199,49 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         otpRepository.save(otp);
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(smtpFrom);
-        message.setTo(member.getEmail());
-        message.setSubject("Finance Tracker \u2014 Verify your email");
-        message.setText(
-            "Hi " + member.getFirstName() + ",\n\n" +
-            "Your verification code is:\n\n" +
-            "  " + code + "\n\n" +
-            "This code expires in " + otpExpiryMinutes + " minutes.\n\n" +
-            "If you didn't request this, please ignore this email.\n\n" +
-            "\u2014 Finance Tracker"
+        sendBrevoEmail(
+                member.getEmail(),
+                member.getFirstName(),
+                "Finance Tracker \u2014 Verify your email",
+                "<html><body style='font-family:sans-serif;background:#11111b;color:#cdd6f4;padding:40px'>" +
+                "<div style='max-width:480px;margin:0 auto;background:#1e1e2e;border-radius:12px;padding:36px'>" +
+                "<h2 style='color:#89b4fa;margin-top:0'>Verify your email</h2>" +
+                "<p>Hi " + member.getFirstName() + ",</p>" +
+                "<p>Your Finance Tracker verification code is:</p>" +
+                "<div style='background:#313244;border-radius:8px;padding:20px;text-align:center;margin:24px 0'>" +
+                "<span style='font-size:2rem;font-weight:700;letter-spacing:0.3em;color:#cdd6f4'>" + code + "</span>" +
+                "</div>" +
+                "<p style='color:#a6adc8;font-size:0.9rem'>This code expires in <strong>" + otpExpiryMinutes + " minutes</strong>.</p>" +
+                "<p style='color:#6c7086;font-size:0.8rem'>If you didn't create a Finance Tracker account, you can safely ignore this email.</p>" +
+                "</div></body></html>"
         );
-        mailSender.send(message);
+    }
+
+    private void sendBrevoEmail(String toEmail, String toName, String subject, String htmlContent) {
+        String url = "https://api.brevo.com/v3/smtp/email";
+
+        String body = String.format(
+            "{\"sender\":{\"name\":\"%s\",\"email\":\"%s\"}," +
+            "\"to\":[{\"email\":\"%s\",\"name\":\"%s\"}]," +
+            "\"subject\":\"%s\"," +
+            "\"htmlContent\":\"%s\"}",
+            brevoSenderName, brevoSenderEmail,
+            toEmail, toName,
+            subject,
+            htmlContent.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+        );
+
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.set("api-key", brevoApiKey);
+        headers.set("accept", "application/json");
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+
+        org.springframework.http.HttpEntity<String> request = new org.springframework.http.HttpEntity<>(body, headers);
+        try {
+            restTemplate.postForEntity(url, request, String.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send verification email: " + e.getMessage(), e);
+        }
     }
 
     private AuthResponse buildAuthResponse(Member member, String token) {
