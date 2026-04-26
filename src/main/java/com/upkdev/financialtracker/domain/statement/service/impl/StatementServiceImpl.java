@@ -211,7 +211,7 @@ public class StatementServiceImpl implements StatementService {
                 + "}\n\n"
                 + "Rules:\n"
                 + "- type must be either \"DEBIT\" or \"CREDIT\"\n"
-                + "- if chase checking account then along with the transaction it also shows the running account balance, thus need to omit the running balance data"
+                + "- if chase checking account then along with the transaction it also shows the running account balance, thus need to omit the running balance data same for incoming data(this is high importance)"
                 + "- suggestedCategory for DEBIT expenses: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, INVESTMENT, OTHER\n"
                 + "- suggestedCategory for CREDIT income: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
                 + "- transactionType: EXPENSE for purchases/bills, INCOME for salary/deposits, INVESTMENT for money going to investment accounts/brokerage, TRANSFER for internal account moves/CC payments from chequing, CC_PAYMENT for payments received by a credit card\n"

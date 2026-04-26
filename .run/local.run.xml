@@ -1,0 +1,28 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="FinancialTrackerAPI (Local)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.upkdev.financialtracker.FinancialTrackerApiApplication" />
+    <module name="finance-tracker-api" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=default" />
+    <option name="PROGRAM_PARAMETERS" value="" />
+    <option name="WORKING_DIRECTORY" value="$MODULE_WORKING_DIR$" />
+    <envs>
+      <env name="DB_URL" value="jdbc:postgresql://localhost:5432/finance_tracker" />
+      <env name="DB_USER" value="finance_user" />
+      <env name="DB_PASS" value="finance_pass" />
+      <env name="PORT" value="8080" />
+      <env name="OLLAMA_URL" value="http://localhost:11434" />
+      <env name="OLLAMA_MODEL" value="gemma4:e2b" />
+      <env name="JWT_SECRET" value="REPLACE_WITH_YOUR_JWT_SECRET" />
+      <env name="JWT_EXPIRY_MINUTES" value="30" />
+      <env name="OTP_EXPIRY_MINUTES" value="2" />
+      <env name="GOOGLE_CLIENT_ID" value="REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID" />
+      <env name="BREVO_API_KEY" value="REPLACE_WITH_YOUR_BREVO_API_KEY" />
+      <env name="BREVO_SENDER_EMAIL" value="REPLACE_WITH_YOUR_SENDER_EMAIL" />
+      <env name="BREVO_SENDER_NAME" value="Finance Tracker" />
+    </envs>
+    <option name="ENABLE_DEBUG_CODE" value="true" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
