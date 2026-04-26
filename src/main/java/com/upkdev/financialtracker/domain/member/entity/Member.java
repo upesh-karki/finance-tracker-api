@@ -27,7 +27,7 @@ public class Member {
     @Column(name = "email", unique = true, nullable = false)
     private String email;
 
-    @Column(name = "password", nullable = false)
+    @Column(name = "password")
     private String password;
 
     @Column(name = "username", unique = true)
@@ -46,4 +46,15 @@ public class Member {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "email_verified")
+    @Builder.Default
+    private Boolean emailVerified = false;
+
+    @Column(name = "auth_provider")
+    @Builder.Default
+    private String authProvider = "LOCAL";
+
+    @Column(name = "google_id")
+    private String googleId;
 }
