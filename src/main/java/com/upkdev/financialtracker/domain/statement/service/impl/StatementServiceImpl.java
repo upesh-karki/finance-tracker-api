@@ -58,7 +58,14 @@ public class StatementServiceImpl implements StatementService {
         String pdfText = extractTextFromPdf(file);
         log.info("Extracted {} characters from PDF", pdfText.length());
 
-        List<ExtractedTransaction> all = extractTransactionsWithOllama(pdfText, accountTypeCode);
+        // If text is very long, process in chunks to avoid Ollama timeout
+        List<ExtractedTransaction> all;
+        if (pdfText.length() > 8000) {
+            log.info("Large PDF detected ({} chars), processing in chunks", pdfText.length());
+            all = extractInChunks(pdfText, accountTypeCode);
+        } else {
+            all = extractTransactionsWithOllama(pdfText, accountTypeCode);
+        }
 
         boolean isCreditCard = "CREDIT_CARD".equalsIgnoreCase(accountTypeCode);
 
@@ -142,6 +149,36 @@ public class StatementServiceImpl implements StatementService {
         return Collections.emptyList();
     }
 
+    private List<ExtractedTransaction> extractInChunks(String pdfText, String accountTypeCode) {
+        int chunkSize = 6000;
+        List<ExtractedTransaction> all = new ArrayList<>();
+        int start = 0;
+        int chunkNum = 1;
+        while (start < pdfText.length()) {
+            int end = Math.min(start + chunkSize, pdfText.length());
+            // Try to break at a newline boundary
+            if (end < pdfText.length()) {
+                int nl = pdfText.lastIndexOf('\n', end);
+                if (nl > start + 1000) end = nl;
+            }
+            String chunk = pdfText.substring(start, end);
+            log.info("Processing chunk {} ({} chars)", chunkNum, chunk.length());
+            try {
+                List<ExtractedTransaction> chunkResult = extractTransactionsWithOllama(chunk, accountTypeCode);
+                all.addAll(chunkResult);
+            } catch (Exception e) {
+                log.warn("Chunk {} failed: {}", chunkNum, e.getMessage());
+            }
+            start = end;
+            chunkNum++;
+        }
+        // Deduplicate by date+description+amount
+        return all.stream()
+                .filter(t -> t.getDate() != null && t.getAmount() != null)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
     private String buildExtractionPrompt(String pdfText, String accountTypeCode) {
         boolean isCreditCard = "CREDIT_CARD".equalsIgnoreCase(accountTypeCode);
         boolean isInvestment = "INVESTMENT".equalsIgnoreCase(accountTypeCode);
@@ -174,6 +211,7 @@ public class StatementServiceImpl implements StatementService {
                 + "}\n\n"
                 + "Rules:\n"
                 + "- type must be either \"DEBIT\" or \"CREDIT\"\n"
+                + "- if chase checking account then along with the transaction it also shows the running account balance, thus need to omit the running balance data"
                 + "- suggestedCategory for DEBIT expenses: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, INVESTMENT, OTHER\n"
                 + "- suggestedCategory for CREDIT income: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
                 + "- transactionType: EXPENSE for purchases/bills, INCOME for salary/deposits, INVESTMENT for money going to investment accounts/brokerage, TRANSFER for internal account moves/CC payments from chequing, CC_PAYMENT for payments received by a credit card\n"
