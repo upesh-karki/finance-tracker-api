@@ -71,6 +71,12 @@
 			<artifactId>liquibase-core</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- PDF Parsing -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.2</version>
+		</dependency>
 	</dependencies>
 
 	<distributionManagement>
