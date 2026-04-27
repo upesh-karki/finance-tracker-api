@@ -24,6 +24,15 @@ public class Expense {
     @Column(name = "member_id", nullable = false)
     private Long memberId;
 
+    @Column(name = "account_id")
+    private Long accountId;
+
+    @Column(name = "statement_id")
+    private Long statementId;
+
+    @Column(name = "institution_name")
+    private String institutionName;
+
     @Column(name = "expense_name", nullable = false)
     private String expenseName;
 

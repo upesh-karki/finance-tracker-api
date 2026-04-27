@@ -15,6 +15,10 @@ public class ExpenseRequest {
     @NotNull(message = "Member ID is required")
     private Long memberId;
 
+    private Long accountId;
+    private Long statementId;
+    private String institutionName;
+
     @NotBlank(message = "Expense name is required")
     private String expenseName;
 

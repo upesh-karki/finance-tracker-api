@@ -12,6 +12,7 @@ public class IncomeResponse {
     private Long accountId;
     private Long statementId;
     private String sourceName;
+    private String institutionName;
     private BigDecimal amount;
     private String incomeCategoryCode;
     private LocalDate incomeDate;

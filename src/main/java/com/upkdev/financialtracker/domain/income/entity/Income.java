@@ -27,6 +27,9 @@ public class Income {
     @Column(name = "source_name", nullable = false)
     private String sourceName;
 
+    @Column(name = "institution_name")
+    private String institutionName;
+
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 

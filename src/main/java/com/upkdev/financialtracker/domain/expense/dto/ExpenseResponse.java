@@ -17,6 +17,9 @@ import java.time.LocalDateTime;
 public class ExpenseResponse {
     private Long id;
     private Long memberId;
+    private Long accountId;
+    private Long statementId;
+    private String institutionName;
     private String expenseName;
     private BigDecimal amount;
     private ExpenseCategory category;

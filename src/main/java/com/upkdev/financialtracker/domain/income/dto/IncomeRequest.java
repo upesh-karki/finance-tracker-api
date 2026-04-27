@@ -17,6 +17,8 @@ public class IncomeRequest {
     @NotBlank
     private String sourceName;
 
+    private String institutionName;
+
     @NotNull @DecimalMin("0.01")
     private BigDecimal amount;
 
