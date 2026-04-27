@@ -1,5 +1,13 @@
-spring:
-  application:
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    display-request-duration: true
+
+
     name: finance-tracker-api
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/finance_tracker}

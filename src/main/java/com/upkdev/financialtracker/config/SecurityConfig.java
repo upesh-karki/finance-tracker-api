@@ -4,6 +4,7 @@ import com.upkdev.financialtracker.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -48,12 +49,14 @@ public class SecurityConfig {
                 })
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/api/v1/members/login",
-                    "/api/v1/members",
-                    "/api/v1/accounts/institutions"
-                ).permitAll()
+                // Public POST — registration + login
+                .requestMatchers(HttpMethod.POST,  "/api/auth/**")              .permitAll()
+                .requestMatchers(HttpMethod.POST,  "/api/v1/members")           .permitAll()
+                .requestMatchers(HttpMethod.POST,  "/api/v1/members/login")     .permitAll()
+                // Public GETs
+                .requestMatchers(HttpMethod.GET,   "/api/v1/accounts/institutions").permitAll()
+                // Swagger / OpenAPI
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs", "/api-docs/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
