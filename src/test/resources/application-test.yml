@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS ODS
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS ODS\;CREATE SCHEMA IF NOT EXISTS REF\;CREATE SCHEMA IF NOT EXISTS RPT
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -12,3 +12,21 @@ spring:
         dialect: org.hibernate.dialect.H2Dialect
   liquibase:
     enabled: false
+
+app:
+  jwt:
+    secret: test-secret-key-for-unit-tests-only-minimum-32-chars
+    expiry-minutes: 30
+  otp:
+    expiry-minutes: 2
+  google:
+    client-id: test-google-client-id
+  brevo:
+    api-key: test-brevo-key
+    sender-email: test@test.com
+    sender-name: Test
+
+ollama:
+  base-url: http://localhost:11434
+  model: test-model
+  timeout-seconds: 30

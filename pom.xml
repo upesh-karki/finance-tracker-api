@@ -54,6 +54,11 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>com.upkdev.financetracker</groupId>
 			<artifactId>finance-tracker-db-test</artifactId>
 			<version>2026.04.1-SNAPSHOT</version>

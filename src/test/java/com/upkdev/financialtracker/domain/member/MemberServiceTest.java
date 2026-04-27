@@ -12,12 +12,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,6 +27,9 @@ class MemberServiceTest {
 
     @Mock
     private MemberDao memberDao;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private MemberServiceImpl memberService;
@@ -58,6 +63,7 @@ class MemberServiceTest {
     @Test
     void register_mapsAndReturnsResponse() {
         Member saved = buildMember(1L);
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed-pass");
         when(memberDao.save(any(Member.class))).thenReturn(saved);
 
         MemberResponse response = memberService.register(buildRequest());
@@ -109,6 +115,7 @@ class MemberServiceTest {
     void login_validCredentials_returnsResponse() {
         Member member = buildMember(1L);
         when(memberDao.findByUsername("johndoe")).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches("pass", "pass")).thenReturn(true);
 
         LoginRequest req = new LoginRequest();
         req.setUsername("johndoe");
@@ -123,6 +130,7 @@ class MemberServiceTest {
     void login_wrongPassword_throwsException() {
         Member member = buildMember(1L);
         when(memberDao.findByUsername("johndoe")).thenReturn(Optional.of(member));
+        when(passwordEncoder.matches("wrongpass", "pass")).thenReturn(false);
 
         LoginRequest req = new LoginRequest();
         req.setUsername("johndoe");
