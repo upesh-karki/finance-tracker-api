@@ -69,25 +69,37 @@ public class StatementServiceImpl implements StatementService {
 
         boolean isCreditCard = "CREDIT_CARD".equalsIgnoreCase(accountTypeCode);
 
-        // Transfers = neutral transactions (CC payments from chequing, investment contributions, internal transfers)
-        List<ExtractedTransaction> transfers = all.stream()
-                .filter(t -> Boolean.TRUE.equals(t.getIsTransfer())
-                        || Boolean.TRUE.equals(t.getIsCreditCardPayment()))
+        // Investments — tracked separately, never count as expense or income
+        List<ExtractedTransaction> investments = all.stream()
+                .filter(t -> "INVESTMENT".equalsIgnoreCase(t.getTransactionType()))
+                .peek(t -> t.setDisplayType("INVESTMENT"))
                 .collect(Collectors.toList());
 
-        // Expenses = debits that are not transfers
+        // Transfers = neutral transactions (CC payments from chequing, investment contributions, internal transfers)
+        List<ExtractedTransaction> transfers = all.stream()
+                .filter(t -> !"INVESTMENT".equalsIgnoreCase(t.getTransactionType())
+                        && (Boolean.TRUE.equals(t.getIsTransfer())
+                            || Boolean.TRUE.equals(t.getIsCreditCardPayment())))
+                .peek(t -> t.setDisplayType("NEUTRAL"))
+                .collect(Collectors.toList());
+
+        // Expenses = debits that are not transfers and not investments
         List<ExtractedTransaction> expenses = all.stream()
                 .filter(t -> "DEBIT".equalsIgnoreCase(t.getType())
                         && !Boolean.TRUE.equals(t.getIsTransfer())
-                        && !Boolean.TRUE.equals(t.getIsCreditCardPayment()))
+                        && !Boolean.TRUE.equals(t.getIsCreditCardPayment())
+                        && !"INVESTMENT".equalsIgnoreCase(t.getTransactionType()))
+                .peek(t -> t.setDisplayType("EXPENSE"))
                 .collect(Collectors.toList());
 
-        // Income = credits that are not transfers and not on credit card
+        // Income = credits that are not transfers and not on credit card and not investments
         List<ExtractedTransaction> income = all.stream()
                 .filter(t -> "CREDIT".equalsIgnoreCase(t.getType())
                         && !isCreditCard
                         && !Boolean.TRUE.equals(t.getIsTransfer())
-                        && !Boolean.TRUE.equals(t.getIsCreditCardPayment()))
+                        && !Boolean.TRUE.equals(t.getIsCreditCardPayment())
+                        && !"INVESTMENT".equalsIgnoreCase(t.getTransactionType()))
+                .peek(t -> t.setDisplayType("INCOME"))
                 .collect(Collectors.toList());
 
         // CC payments specifically (subset of transfers, for display purposes)
@@ -96,12 +108,24 @@ public class StatementServiceImpl implements StatementService {
                         || ("CREDIT".equalsIgnoreCase(t.getType()) && isCreditCard && !Boolean.TRUE.equals(t.getIsTransfer())))
                 .collect(Collectors.toList());
 
+        // Flat unified list (expenses + income + transfers/CC) — excludes investments (own section)
+        List<ExtractedTransaction> transactions = new java.util.ArrayList<>();
+        transactions.addAll(expenses);
+        transactions.addAll(income);
+        transactions.addAll(transfers);
+        // Sort by date ascending
+        transactions.sort(java.util.Comparator.comparing(
+                t -> t.getDate() != null ? t.getDate() : ""));
+
         return StatementUploadResponse.builder()
                 .transactionCount(all.size())
                 .expenseCount(expenses.size())
                 .incomeCount(income.size())
                 .transferCount(transfers.size())
                 .creditCardPaymentCount(ccPayments.size())
+                .investmentCount(investments.size())
+                .transactions(transactions)
+                .investments(investments)
                 .expenses(expenses)
                 .income(income)
                 .transfers(transfers)

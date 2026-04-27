@@ -10,6 +10,12 @@ public class StatementUploadResponse {
     private int incomeCount;
     private int creditCardPaymentCount;
     private int transferCount;
+    private int investmentCount;
+    // Flat unified list — used by the new single-table UI
+    private List<ExtractedTransaction> transactions;
+    // Investments tracked separately — not counted as expense or income
+    private List<ExtractedTransaction> investments;
+    // Legacy split lists (kept for backward compat)
     private List<ExtractedTransaction> expenses;
     private List<ExtractedTransaction> income;
     private List<ExtractedTransaction> transfers;

@@ -13,4 +13,6 @@ public class ExtractedTransaction {
     private Boolean isCreditCardPayment;
     private Boolean isTransfer;
     private String transactionType; // EXPENSE, INCOME, INVESTMENT, TRANSFER, CC_PAYMENT
+    // Computed display type for unified UI: EXPENSE | INCOME | NEUTRAL | INVESTMENT
+    private String displayType;
 }
