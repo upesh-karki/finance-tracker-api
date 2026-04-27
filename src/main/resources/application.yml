@@ -15,7 +15,7 @@ springdoc:
     password: ${DB_PASS:finance_pass}
     driver-class-name: org.postgresql.Driver
     hikari:
-      connection-init-sql: "SET search_path TO ods, ref, rpt, public"
+      connection-init-sql: "CREATE SCHEMA IF NOT EXISTS dbutils; SET search_path TO ods, ref, rpt, dbutils, public"
   jpa:
     hibernate:
       ddl-auto: validate
@@ -25,6 +25,9 @@ springdoc:
     show-sql: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
+    database-change-log-table: changelog_audit
+    database-change-log-lock-table: databasechangeloglock
+    liquibase-schema: dbutils
 
 server:
   port: ${PORT:8080}
