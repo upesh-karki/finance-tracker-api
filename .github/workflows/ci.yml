@@ -37,6 +37,13 @@ jobs:
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<EOF
           <settings>
+            <mirrors>
+              <mirror>
+                <id>central-https</id>
+                <mirrorOf>central</mirrorOf>
+                <url>https://repo1.maven.org/maven2</url>
+              </mirror>
+            </mirrors>
             <servers>
               <server>
                 <id>github-packages</id>
@@ -60,7 +67,7 @@ jobs:
           EOF
 
       - name: Build, test and check coverage
-        run: mvn clean verify -U  # -U forces re-download of SNAPSHOT dependencies
+        run: mvn clean verify --no-transfer-progress
 
       - name: Upload test results
         if: always()
@@ -104,6 +111,13 @@ jobs:
           mkdir -p ~/.m2
           cat > ~/.m2/settings.xml <<EOF
           <settings>
+            <mirrors>
+              <mirror>
+                <id>central-https</id>
+                <mirrorOf>central</mirrorOf>
+                <url>https://repo1.maven.org/maven2</url>
+              </mirror>
+            </mirrors>
             <servers>
               <server>
                 <id>github-packages</id>
@@ -127,4 +141,4 @@ jobs:
           EOF
 
       - name: Publish to GitHub Packages
-        run: mvn deploy -DskipTests
+        run: mvn deploy -DskipTests --no-transfer-progress
