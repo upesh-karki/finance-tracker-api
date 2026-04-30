@@ -58,14 +58,21 @@ public class StatementServiceImpl implements StatementService {
         String pdfText = extractTextFromPdf(file);
         log.info("Extracted {} characters from PDF", pdfText.length());
 
+        // Pre-process: strip running balance column before sending to AI
+        String processedText = stripRunningBalances(pdfText);
+        log.info("After balance stripping: {} characters", processedText.length());
+
         // If text is very long, process in chunks to avoid Ollama timeout
         List<ExtractedTransaction> all;
-        if (pdfText.length() > 8000) {
-            log.info("Large PDF detected ({} chars), processing in chunks", pdfText.length());
-            all = extractInChunks(pdfText, accountTypeCode);
+        if (processedText.length() > 8000) {
+            log.info("Large PDF detected ({} chars), processing in chunks", processedText.length());
+            all = extractInChunks(processedText, accountTypeCode);
         } else {
-            all = extractTransactionsWithOllama(pdfText, accountTypeCode);
+            all = extractTransactionsWithOllama(processedText, accountTypeCode);
         }
+
+        // Post-process: flag amounts that look like running balances
+        flagAnomalousAmounts(all);
 
         boolean isCreditCard = "CREDIT_CARD".equalsIgnoreCase(accountTypeCode);
 
@@ -147,6 +154,88 @@ public class StatementServiceImpl implements StatementService {
         }
     }
 
+    /**
+     * Pre-processes raw PDFBox text before sending to the AI model.
+     * Bank statements typically have a running balance as the LAST number on each transaction line.
+     * PDFTextStripper flattens columns into a single stream, so the balance looks identical to
+     * a transaction amount. This method strips trailing balance figures from transaction lines
+     * to prevent the model from confusing them with actual amounts.
+     *
+     * Pattern matched: lines ending with  ...  $1,234.56  $5,678.90
+     * The last money-like token is removed; the second-to-last is the real transaction amount.
+     */
+    private String stripRunningBalances(String rawText) {
+        // Match lines that end with two consecutive money patterns (amount then balance)
+        // e.g. "Jan 5   Netflix   15.99   4,588.81"  →  "Jan 5   Netflix   15.99"
+        // Money pattern: optional $ or -, digits, optional comma-groups, optional decimal
+        String moneyPattern = "\\$?-?[\\d,]+(?:\\.\\d{2})?";
+        // Line ends with: whitespace + money + whitespace + money (balance)
+        java.util.regex.Pattern balanceAtEnd = java.util.regex.Pattern.compile(
+            "(" + moneyPattern + ")\\s+(" + moneyPattern + ")\\s*$");
+
+        StringBuilder cleaned = new StringBuilder();
+        for (String line : rawText.split("\n")) {
+            java.util.regex.Matcher m = balanceAtEnd.matcher(line);
+            if (m.find()) {
+                // Only strip if both numbers look like plausible amounts (> 0.00)
+                String first  = m.group(1).replaceAll("[,$]", "");
+                String second = m.group(2).replaceAll("[,$]", "");
+                try {
+                    double a = Double.parseDouble(first);
+                    double b = Double.parseDouble(second);
+                    // Heuristic: if second >> first it's more likely a running balance
+                    // Also strip if second looks like a large account balance (> $500 and > 5x first)
+                    if (a > 0 && b > 0 && (b > 500 || b > a * 3)) {
+                        // Remove the trailing balance (second match)
+                        cleaned.append(line, 0, m.start(2)).append("\n");
+                        continue;
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+            cleaned.append(line).append("\n");
+        }
+        return cleaned.toString();
+    }
+
+    /**
+     * Post-extraction anomaly detection.
+     * Flags transactions whose amount is suspiciously large compared to the median —
+     * a strong signal that the model picked up a running balance instead of a transaction.
+     */
+    private void flagAnomalousAmounts(List<ExtractedTransaction> transactions) {
+        if (transactions.size() < 3) return;
+
+        List<Double> amounts = transactions.stream()
+                .filter(t -> t.getAmount() != null)
+                .map(t -> t.getAmount().doubleValue())
+                .sorted()
+                .collect(Collectors.toList());
+
+        // Median
+        double median = amounts.get(amounts.size() / 2);
+        // P90 — top 10% threshold
+        double p90 = amounts.get((int)(amounts.size() * 0.9));
+
+        for (ExtractedTransaction tx : transactions) {
+            if (tx.getAmount() == null) continue;
+            double amt = tx.getAmount().doubleValue();
+            // Flag if: amount > 10x median AND > $1000 (likely a running balance)
+            if (amt > median * 10 && amt > 1000) {
+                tx.setConfidenceLow(true);
+                tx.setConfidenceNote(String.format(
+                    "Amount $%.2f is unusually large (median: $%.2f) — may be a running balance. Please verify.",
+                    amt, median));
+            }
+            // Also flag if it looks exactly like a round thousand (running balances often are)
+            else if (amt > p90 && amt % 100 == 0 && amt > 2000) {
+                tx.setConfidenceLow(true);
+                tx.setConfidenceNote(String.format(
+                    "Amount $%.0f is a round number larger than 90%% of transactions — verify this is not a balance.",
+                    amt));
+            }
+        }
+    }
+
     private List<ExtractedTransaction> extractTransactionsWithOllama(String pdfText, String accountTypeCode) {
         String prompt = buildExtractionPrompt(pdfText, accountTypeCode);
 
@@ -174,33 +263,60 @@ public class StatementServiceImpl implements StatementService {
     }
 
     private List<ExtractedTransaction> extractInChunks(String pdfText, String accountTypeCode) {
-        int chunkSize = 6000;
-        List<ExtractedTransaction> all = new ArrayList<>();
-        int start = 0;
-        int chunkNum = 1;
-        while (start < pdfText.length()) {
-            int end = Math.min(start + chunkSize, pdfText.length());
-            // Try to break at a newline boundary
-            if (end < pdfText.length()) {
-                int nl = pdfText.lastIndexOf('\n', end);
-                if (nl > start + 1000) end = nl;
+        // Prefer page boundaries (\f = form feed inserted by PDFTextStripper between pages)
+        // Fall back to newline-based chunking if no page breaks found
+        String[] pages = pdfText.split("\f");
+        List<String> chunks = new ArrayList<>();
+
+        if (pages.length > 1) {
+            // Group pages into batches that stay under 6000 chars
+            StringBuilder batch = new StringBuilder();
+            for (String page : pages) {
+                if (batch.length() + page.length() > 6000 && batch.length() > 0) {
+                    chunks.add(batch.toString());
+                    batch = new StringBuilder();
+                }
+                batch.append(page).append("\n");
             }
-            String chunk = pdfText.substring(start, end);
-            log.info("Processing chunk {} ({} chars)", chunkNum, chunk.length());
+            if (batch.length() > 0) chunks.add(batch.toString());
+        } else {
+            // No page breaks — fall back to newline-boundary chunking
+            int chunkSize = 6000;
+            int start = 0;
+            while (start < pdfText.length()) {
+                int end = Math.min(start + chunkSize, pdfText.length());
+                if (end < pdfText.length()) {
+                    int nl = pdfText.lastIndexOf('\n', end);
+                    if (nl > start + 1000) end = nl;
+                }
+                chunks.add(pdfText.substring(start, end));
+                start = end;
+            }
+        }
+
+        List<ExtractedTransaction> all = new ArrayList<>();
+        int chunkNum = 1;
+        for (String chunk : chunks) {
+            log.info("Processing chunk {} of {} ({} chars)", chunkNum, chunks.size(), chunk.length());
             try {
                 List<ExtractedTransaction> chunkResult = extractTransactionsWithOllama(chunk, accountTypeCode);
                 all.addAll(chunkResult);
             } catch (Exception e) {
                 log.warn("Chunk {} failed: {}", chunkNum, e.getMessage());
             }
-            start = end;
             chunkNum++;
         }
-        // Deduplicate by date+description+amount
-        return all.stream()
-                .filter(t -> t.getDate() != null && t.getAmount() != null)
-                .distinct()
-                .collect(Collectors.toList());
+
+        // Deduplicate by date+description+amount (override equals via key string)
+        Map<String, ExtractedTransaction> seen = new LinkedHashMap<>();
+        for (ExtractedTransaction tx : all) {
+            if (tx.getDate() == null || tx.getAmount() == null) continue;
+            String key = tx.getDate() + "|"
+                    + (tx.getDescription() != null ? tx.getDescription().trim().toLowerCase() : "") + "|"
+                    + tx.getAmount().toPlainString();
+            seen.putIfAbsent(key, tx);
+        }
+        return new ArrayList<>(seen.values());
     }
 
     private String buildExtractionPrompt(String pdfText, String accountTypeCode) {
@@ -209,14 +325,24 @@ public class StatementServiceImpl implements StatementService {
 
         String accountContext;
         if (isCreditCard) {
-            accountContext = "This is a CREDIT CARD statement. Purchases/charges are DEBIT (expenses). Payments made TO the card are credits — mark those as isCreditCardPayment=true. They are NOT income or expenses.";
+            accountContext = "This is a CREDIT CARD statement. Purchases/charges are DEBIT (expenses). Payments made TO the card are credits — mark those as isCreditCardPayment=true. They are NOT income.";
         } else if (isInvestment) {
             accountContext = "This is an INVESTMENT account statement. Contributions/deposits are transfers IN (isTransfer=true). Withdrawals are transfers OUT (isTransfer=true). Dividends or interest are CREDIT (income). Fees are DEBIT (expense).";
         } else {
-            accountContext = "This is a bank account statement. Outgoing transactions are DEBIT (expenses). Incoming transactions like salary, transfers from employer are CREDIT (income). However: payments to credit cards, transfers to other personal accounts (savings, investment), and internal account transfers should be marked isTransfer=true — they are NEUTRAL and should NOT count as expenses or income.";
+            accountContext = "This is a bank account statement. Outgoing transactions are DEBIT (expenses). Incoming transactions like salary are CREDIT (income). Payments to credit cards, transfers to savings/investment accounts, and internal transfers must be marked isTransfer=true — they are NEUTRAL.";
         }
 
-        return "You are a financial data extraction assistant. Extract all transactions from the bank statement text below.\n\n"
+        return "You are a precise financial data extraction assistant. Extract every transaction from the bank statement below.\n\n"
+                + "CRITICAL RULE — READ THIS FIRST:\n"
+                + "Bank statements have a RUNNING BALANCE column on the right side of each row.\n"
+                + "The running balance is NOT a transaction amount. NEVER use it as the amount field.\n"
+                + "Each transaction row has this structure:\n"
+                + "  [date]  [description]  [transaction amount]  [running balance]\n"
+                + "Example:\n"
+                + "  Jan 5   Netflix          15.99   4,588.81\n"
+                + "  Jan 6   Grocery Store    45.20   4,543.61\n"
+                + "Correct: amount=15.99 (NOT 4588.81), amount=45.20 (NOT 4543.61)\n"
+                + "The transaction amount is always SMALLER. The running balance is always LARGER and changes each row.\n\n"
                 + "Account context: " + accountContext + "\n\n"
                 + "Return ONLY a valid JSON object in this exact format, nothing else:\n"
                 + "{\n"
@@ -233,17 +359,17 @@ public class StatementServiceImpl implements StatementService {
                 + "    }\n"
                 + "  ]\n"
                 + "}\n\n"
-                + "Rules:\n"
-                + "- type must be either \"DEBIT\" or \"CREDIT\"\n"
-                + "- if chase checking account then along with the transaction it also shows the running account balance, thus need to omit the running balance data same for incoming data(this is high importance)"
-                + "- suggestedCategory for DEBIT expenses: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, INVESTMENT, OTHER\n"
-                + "- suggestedCategory for CREDIT income: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
-                + "- transactionType: EXPENSE for purchases/bills, INCOME for salary/deposits, INVESTMENT for money going to investment accounts/brokerage, TRANSFER for internal account moves/CC payments from chequing, CC_PAYMENT for payments received by a credit card\n"
-                + "- isCreditCardPayment: true ONLY for credits on a credit card statement (card payments received)\n"
-                + "- isTransfer: true for: credit card payments (from chequing), transfers to savings/investment accounts, internal account transfers, investment contributions — these are NEUTRAL transactions\n"
-                + "- amount must be a positive number\n"
-                + "- date must be in YYYY-MM-DD format\n"
-                + "- Extract ALL transactions\n\n"
+                + "Field rules:\n"
+                + "- amount: MUST be the transaction amount only — the smaller number on the row. NEVER the running balance.\n"
+                + "- amount must always be a positive number\n"
+                + "- type: \"DEBIT\" for money going out, \"CREDIT\" for money coming in\n"
+                + "- date: YYYY-MM-DD format only\n"
+                + "- suggestedCategory for DEBIT: FOOD, TRANSPORT, UTILITIES, SUBSCRIPTIONS, ENTERTAINMENT, TRAVEL, HEALTH, INVESTMENT, OTHER\n"
+                + "- suggestedCategory for CREDIT: SALARY, FREELANCE, REFUND, TRANSFER, OTHER\n"
+                + "- transactionType: EXPENSE for purchases/bills, INCOME for salary/deposits, INVESTMENT for brokerage/investment contributions, TRANSFER for CC payments or account transfers, CC_PAYMENT for payments received by a credit card\n"
+                + "- isCreditCardPayment: true ONLY for credits received by a credit card\n"
+                + "- isTransfer: true for CC payments from chequing, transfers to savings/investment, internal moves — these are NEUTRAL\n"
+                + "- Extract EVERY transaction row. Do not skip any.\n\n"
                 + "Bank statement text:\n" + pdfText;
     }
 

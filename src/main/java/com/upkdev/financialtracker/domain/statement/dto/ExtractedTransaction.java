@@ -15,4 +15,7 @@ public class ExtractedTransaction {
     private String transactionType; // EXPENSE, INCOME, INVESTMENT, TRANSFER, CC_PAYMENT
     // Computed display type for unified UI: EXPENSE | INCOME | NEUTRAL | INVESTMENT
     private String displayType;
+    // True when post-extraction validation suspects this amount may be a running balance
+    private Boolean confidenceLow;
+    private String confidenceNote;
 }
